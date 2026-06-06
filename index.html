@@ -946,7 +946,21 @@
         }
 
         function getStoredAuth() {
-            try { return JSON.parse(localStorage.getItem(AUTH_KEY)); } catch { return null; }
+            try {
+                const raw = localStorage.getItem(AUTH_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                // Ensure the stored data has valid username and hash fields
+                if (parsed && typeof parsed.username === 'string' && parsed.username.length >= 3 && typeof parsed.hash === 'string' && parsed.hash.length > 0) {
+                    return parsed;
+                }
+                // Corrupted data — clean it up
+                localStorage.removeItem(AUTH_KEY);
+                return null;
+            } catch {
+                localStorage.removeItem(AUTH_KEY);
+                return null;
+            }
         }
 
         function setStoredAuth(username, passwordHash) {
@@ -1258,7 +1272,9 @@
             document.getElementById('loginOverlay').classList.add('active');
         }
 
-        if (!data.length) {
+        // Only populate sample data if there's no existing customer data AND no stored auth
+        // (avoids edge case where auth data exists but customer data was cleared)
+        if (!data.length && !getStoredAuth()) {
             const samples = [
                 { name: 'Michael Johnson', phone: '3055550147', email: 'michael.j@email.com', contact: '', pickup: '123 Main St, Miami, FL 33101', delivery: '456 Oak Ave, Newark, NJ 07101' },
                 { name: 'Sarah Rodriguez', phone: '7865550234', email: 'sarah.r@email.com', contact: '786-555-9999', pickup: '789 Pine Rd, Orlando, FL 32801', delivery: '321 Elm St, Philadelphia, PA 19101' },
