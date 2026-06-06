@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HG-TRANSPORT DATABASE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { -webkit-text-size-adjust: 100%; height: 100%; }
+        :root {
+            --primary: #1a365d; --primary-light: #2d4a7a; --accent: #ed8936;
+            --accent-hover: #dd6b20; --accent-light: rgba(237,137,54,0.12);
+            --bg: #f0f2f5; --surface: #fff; --surface-hover: #f7f8fa;
+            --border: #e2e4e9; --border-light: #f0f1f3;
+            --text: #1a202c; --text-secondary: #5a6577; --text-muted: #9099a8;
+            --success: #38a169; --danger: #e53e3e; --danger-light: rgba(229,62,62,0.12);
+            --radius: 10px; --radius-sm: 6px; --radius-lg: 14px;
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+            --overlay-bg: rgba(0,0,0,0.5);
+            --pdfl-bg: rgba(255,255,255,0.85);
+        }
+
+        [data-theme="dark"] {
+            --primary: #0d1f3c; --primary-light: #1a3055; --accent: #f59e0b;
+            --accent-hover: #d97706; --accent-light: rgba(245,158,11,0.15);
+            --bg: #0f1117; --surface: #1a1d27; --surface-hover: #232733;
+            --border: #2d3140; --border-light: #262a38;
+            --text: #e2e4e9; --text-secondary: #9ca3af; --text-muted: #6b7280;
+            --success: #34d399; --danger: #f87171; --danger-light: rgba(248,113,113,0.15);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow: 0 2px 8px rgba(0,0,0,0.4);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.6);
+            --overlay-bg: rgba(0,0,0,0.7);
+            --pdfl-bg: rgba(15,17,23,0.9);
+            --hover-row: rgba(245,158,11,0.06);
+            --hover-cell: rgba(245,158,11,0.08);
+            --hover-btn: rgba(245,158,11,0.1);
+        }
+
+        [data-theme="dark"] tbody tr:hover { background: var(--hover-row); }
+        [data-theme="dark"] tbody td .editable:hover { background: var(--hover-cell); border-color: var(--accent); }
+        [data-theme="dark"] .actions button:hover { background: var(--hover-btn); color: var(--accent); }
+        [data-theme="dark"] .actions .del:hover { background: rgba(248,113,113,0.15); color: var(--danger); }
+        [data-theme="dark"] .stat:hover { border-color: var(--accent); }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; min-height: -webkit-fill-available; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; -webkit-tap-highlight-color: transparent; }
+
+        .header { background: var(--primary); color: #fff; padding: 0 max(32px, env(safe-area-inset-right, 32px)); height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+        .logo { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.2rem; letter-spacing: -0.3px; }
+        .logo svg { width: 28px; height: 28px; color: var(--accent); }
+        .logo small { font-weight: 400; font-size: 0.8rem; opacity: 0.7; margin-left: 4px; }
+        .record-count { font-size: 0.85rem; opacity: 0.7; padding: 8px 12px; }
+
+        /* Logout button */
+        .logout-btn {
+            background: rgba(255,255,255,0.1); border: none; cursor: pointer;
+            padding: 6px 12px; border-radius: var(--radius-sm);
+            font-size: 0.78rem; font-weight: 500; font-family: var(--font);
+            color: rgba(255,255,255,0.8); transition: background 0.2s;
+            display: none; align-items: center; gap: 4px;
+        }
+        .logout-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+        .logout-btn.show { display: inline-flex; }
+        .logout-btn svg { width: 14px; height: 14px; }
+
+        .profile-btn {
+            background: rgba(255,255,255,0.1);
+            border: none; cursor: pointer;
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+            color: #fff;
+        }
+        .profile-btn:hover { background: rgba(255,255,255,0.2); }
+        .profile-btn svg { width: 18px; height: 18px; }
+
+        .theme-toggle {
+            background: rgba(255,255,255,0.1);
+            border: none; cursor: pointer;
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+            color: #fff;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+        .theme-toggle:hover { background: rgba(255,255,255,0.2); }
+        .theme-toggle svg { width: 18px; height: 18px; }
+
+        /* Profile modal sections */
+        .profile-section { padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+        .profile-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .profile-section h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 14px; color: var(--text); }
+        .profile-section .desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; }
+
+        .logo-preview { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+        .logo-preview .current-logo {
+            width: 56px; height: 56px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; background: var(--surface);
+            font-size: 0.7rem; color: var(--text-muted);
+        }
+        .logo-preview .current-logo img { width: 100%; height: 100%; object-fit: contain; }
+        .logo-preview .current-logo svg { width: 28px; height: 28px; color: var(--accent); }
+
+        .logo-upload {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .logo-upload .file-input-wrap {
+            position: relative; overflow: hidden;
+        }
+        .logo-upload .file-input-wrap input[type="file"] {
+            position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+            opacity: 0; cursor: pointer;
+        }
+        .logo-upload .file-label {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 9px 16px; border-radius: var(--radius-sm);
+            font-size: 0.85rem; font-weight: 500; font-family: var(--font);
+            background: var(--surface); color: var(--text);
+            border: 1.5px solid var(--border); cursor: pointer;
+            transition: all 0.2s;
+        }
+        .logo-upload .file-label:hover { background: var(--surface-hover); border-color: #c0c4cc; }
+        .logo-upload .file-label svg { width: 16px; height: 16px; }
+        .logo-upload .remove-btn {
+            padding: 9px 14px; border-radius: var(--radius-sm);
+            font-size: 0.85rem; font-weight: 500; font-family: var(--font);
+            background: none; color: var(--danger); border: 1.5px solid transparent;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .logo-upload .remove-btn:hover { background: var(--danger-light); border-color: var(--danger); }
+
+        .profile-modal { max-width: 480px; }
+        .profile-modal .modal-body { padding: 24px 28px; }
+
+        /* Logo display in header */
+        .logo .logo-img { height: 32px; max-width: 160px; object-fit: contain; display: none; }
+        .logo .logo-img.show { display: block; }
+        .logo .logo-svg { display: flex; align-items: center; gap: 12px; }
+        .logo .logo-svg.hide { display: none; }
+
+        /* Logo on login screen */
+        .logo-lg .logo-img-lg { height: 42px; max-width: 200px; object-fit: contain; display: none; }
+        .logo-lg .logo-img-lg.show { display: block; }
+        .logo-lg .logo-svg-lg { display: flex; align-items: center; gap: 12px; }
+        .logo-lg .logo-svg-lg.hide { display: none; }
+
+        .content { max-width: 1300px; margin: 0 auto; padding: 24px max(32px, env(safe-area-inset-right, 32px)); }
+
+        .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tl, .tr { display: flex; align-items: center; gap: 10px; }
+
+        .search-box { position: relative; width: 300px; }
+        .search-box svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-muted); pointer-events: none; }
+        .search-box input { width: 100%; padding: 10px 14px 10px 40px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 0.9rem; font-family: var(--font); background: var(--surface); color: var(--text); transition: border-color 0.2s, box-shadow 0.2s; }
+        .search-box input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        .search-box input::placeholder { color: var(--text-muted); }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 500; font-family: var(--font); cursor: pointer; border: none; transition: all 0.2s; white-space: nowrap; touch-action: manipulation; }
+        .btn svg { width: 18px; height: 18px; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow); }
+        .btn-secondary { background: var(--surface); color: var(--text); border: 1.5px solid var(--border); }
+        .btn-secondary:hover { background: var(--surface-hover); border-color: #c0c4cc; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:hover { background: #c53030; }
+
+        .dashboard { display: flex; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
+        .stat { flex: 1; min-width: 160px; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 18px 22px; display: flex; flex-direction: column; gap: 3px; position: relative; overflow: hidden; transition: box-shadow 0.2s; }
+        .stat:hover { box-shadow: var(--shadow-sm); }
+        .stat .bar { position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
+        .stat .bar.navy { background: var(--primary); }
+        .stat .bar.orange { background: var(--accent); }
+        .stat .bar.green { background: var(--success); }
+        .stat .lbl { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat .val { font-size: 1.6rem; font-weight: 700; color: var(--text); line-height: 1.2; font-variant-numeric: tabular-nums; }
+
+        .table-wrap { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow: hidden; }
+        .table-scroll { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 280px); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+        .table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .table-scroll::-webkit-scrollbar-track { background: transparent; }
+        .table-scroll::-webkit-scrollbar-thumb { background: #c0c4cc; border-radius: 3px; }
+        /* Firefox scrollbar */
+        .table-scroll { scrollbar-width: thin; scrollbar-color: #c0c4cc transparent; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 850px; }
+        thead { position: sticky; top: 0; z-index: 10; }
+        thead th { background: var(--primary); color: #fff; font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.4px; padding: 12px 14px; text-align: left; white-space: nowrap; border-bottom: 2px solid var(--primary-light); user-select: none; }
+        thead th:not(:last-child) { border-right: 1px solid rgba(255,255,255,0.08); }
+        thead th.sortable { cursor: pointer; touch-action: manipulation; }
+        thead th.sortable:hover { background: var(--primary-light); }
+        thead th .si { display: inline-block; margin-left: 6px; opacity: 0.4; }
+        thead th.sort-asc .si, thead th.sort-desc .si { opacity: 1; }
+        tbody tr { transition: background 0.15s; border-bottom: 1px solid var(--border-light); }
+        tbody tr:hover { background: #f8f9fc; }
+        tbody td { padding: 10px 14px; vertical-align: middle; color: var(--text); }
+        tbody td:not(:last-child) { border-right: 1px solid var(--border-light); }
+        tbody td.name { font-weight: 600; }
+
+        tbody td .editable { cursor: text; padding: 4px 8px; border-radius: 4px; border: 1.5px solid transparent; transition: all 0.15s; min-height: 22px; position: relative; touch-action: manipulation; }
+        tbody td .editable::after { content: ''; position: absolute; bottom: 2px; left: 8px; right: 8px; height: 1.5px; background: var(--border); border-radius: 1px; opacity: 0; transition: opacity 0.15s; }
+        tbody td .editable:hover { background: #f0f1f3; border-color: var(--border); }
+        tbody td .editable:hover::after { opacity: 1; }
+        tbody td .editable:focus { outline: none; background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+        tbody td .editable:focus::after { opacity: 0; }
+
+        .actions { display: flex; gap: 4px; justify-content: center; }
+        .actions button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; background: transparent; color: var(--text-muted); touch-action: manipulation; }
+        .actions button:hover { background: #f0f1f3; color: var(--text); }
+        .actions .del:hover { background: var(--danger-light); color: var(--danger); }
+        .actions button svg { width: 16px; height: 16px; }
+
+        .empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.4; }
+        .empty h3 { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600; }
+        .empty p { font-size: 0.9rem; }
+
+        .overlay { display: none; position: fixed; inset: 0; background: var(--overlay-bg); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); z-index: 200; align-items: center; justify-content: center; padding: max(24px, env(safe-area-inset-top, 24px)); }
+        .overlay.active { display: flex; }
+        .modal { background: var(--surface); border-radius: var(--radius-lg); width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); animation: mi 0.25s ease; }
+        @keyframes mi { from { opacity: 0; transform: scale(0.96) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal-hdr { display: flex; align-items: center; justify-content: space-between; padding: 20px 28px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+        .modal-hdr h2 { font-size: 1.2rem; font-weight: 600; }
+        .modal-close { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: 4px; transition: all 0.15s; display: flex; }
+        .modal-close:hover { color: var(--text); background: var(--surface-hover); }
+        .modal-body { padding: 28px; }
+
+        .fg { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+        .fg-w { grid-column: 1 / -1; }
+        .fld { display: flex; flex-direction: column; gap: 5px; }
+        .fld label { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.2px; }
+        .fld label .req { color: var(--danger); }
+        .fld input { padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 0.9rem; font-family: var(--font); background: var(--surface); color: var(--text); transition: border-color 0.2s, box-shadow 0.2s; }
+        .fld input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+
+        .modal-ftr { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 16px 28px; border-top: 1px solid var(--border); background: var(--surface-hover); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+
+        .toasts { position: fixed; top: 80px; right: 24px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+        .toast { display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); border-left: 3px solid var(--success); min-width: 280px; max-width: 400px; animation: ti 0.3s ease; font-size: 0.9rem; }
+        .toast.er { border-left-color: var(--danger); }
+        .toast .ic { width: 20px; height: 20px; flex-shrink: 0; }
+        .toast.su .ic { color: var(--success); }
+        .toast.er .ic { color: var(--danger); }
+        .toast .msg { flex: 1; color: var(--text); }
+        @keyframes ti { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+        .toast.out { animation: to 0.25s ease forwards; }
+        @keyframes to { to { opacity: 0; transform: translateX(40px); } }
+
+        .footer { text-align: center; padding: 16px 32px; color: var(--text-muted); font-size: 0.8rem; border-top: 1px solid var(--border); background: var(--surface); }
+
+        @media print {
+            body { background: #fff; color: #000; font-size: 10pt; }
+            .header, .footer, .toolbar, .dashboard, .actions, .overlay, .toasts, .empty svg, .login-overlay { display: none !important; }
+            .content { padding: 0 !important; max-width: 100% !important; }
+            .table-wrap { border: none !important; box-shadow: none !important; border-radius: 0 !important; }
+            .table-scroll { max-height: none !important; overflow: visible !important; }
+            table { min-width: 0 !important; width: 100% !important; font-size: 9pt !important; page-break-inside: auto; }
+            thead { position: static !important; }
+            thead th { background: #1a365d !important; color: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; padding: 6px 8px !important; font-size: 7.5pt !important; }
+            tbody tr { page-break-inside: avoid; border-bottom: 1px solid #ddd !important; }
+            .theme-toggle { display: none !important; }
+            tbody td { padding: 5px 8px !important; }
+            tbody td .editable { cursor: default !important; border-color: transparent !important; padding: 0 !important; }
+            tbody td .editable::after { display: none !important; }
+            tbody td .editable:hover { background: transparent !important; border-color: transparent !important; }
+            thead th:last-child, tbody td:last-child { display: none !important; }
+            .ph { display: block !important; text-align: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #1a365d; }
+            .ph h1 { font-size: 18pt; color: #1a365d; margin-bottom: 2px; }
+            .ph p { font-size: 9pt; color: #555; }
+            .ps { display: flex !important; justify-content: center; gap: 40px; margin-bottom: 14px; padding: 10px; background: #f8f9fa; border-radius: 4px; font-size: 9pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .ps div { text-align: center; }
+            .ps strong { display: block; font-size: 14pt; color: #1a365d; }
+            .ps span { color: #555; font-size: 8pt; }
+            .empty { display: none !important; }
+            @page { margin: 0.6in 0.5in; size: landscape; }
+        }
+        .ph, .ps { display: none; }
+
+        /* ===== LOGIN OVERLAY ===== */
+        .login-overlay {
+            display: none; position: fixed; inset: 0; z-index: 999;
+            background: var(--bg);
+            align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        .login-overlay.active { display: flex; }
+
+        .login-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            width: 100%; max-width: 420px;
+            padding: 40px 36px 32px;
+            animation: mi 0.3s ease;
+        }
+
+        .login-card .logo-lg {
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            margin-bottom: 8px;
+        }
+        .login-card .logo-lg svg {
+            width: 38px; height: 38px; color: var(--accent);
+        }
+        .login-card .logo-lg span {
+            font-size: 1.5rem; font-weight: 800; color: var(--text);
+            letter-spacing: -0.5px;
+        }
+        .login-card .sub {
+            text-align: center; color: var(--text-muted); font-size: 0.85rem;
+            margin-bottom: 28px; padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .login-card .fg { gap: 14px; grid-template-columns: 1fr; }
+        .login-card .fg .fld { gap: 4px; }
+        .login-card .fg .fld label { font-size: 0.78rem; }
+        .login-card .fg .fld input { width: 100%; }
+        .login-card .btn-primary { width: 100%; margin-top: 6px; padding: 12px; font-size: 0.95rem; }
+
+        .login-card .toggle-link {
+            text-align: center; margin-top: 16px;
+            font-size: 0.82rem; color: var(--text-muted);
+        }
+        .login-card .toggle-link a {
+            color: var(--accent); cursor: pointer; text-decoration: none;
+            font-weight: 600;
+        }
+        .login-card .toggle-link a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+        .login-card .err-msg,
+        .profile-section .err-msg {
+            color: var(--danger); font-size: 0.82rem; margin-top: 8px;
+            display: none; text-align: center;
+        }
+        .login-card .err-msg.show,
+        .profile-section .err-msg.show { display: block; }
+
+        .login-card .success-msg,
+        .profile-section .success-msg {
+            color: var(--success); font-size: 0.85rem; margin-top: 8px;
+            display: none; text-align: center; font-weight: 500;
+        }
+        .login-card .success-msg.show,
+        .profile-section .success-msg.show { display: block; }
+
+        .login-card .info-box {
+            background: var(--accent-light); border-radius: var(--radius-sm);
+            padding: 14px 16px; font-size: 0.82rem; color: var(--text-secondary);
+            line-height: 1.6; margin-bottom: 20px;
+        }
+        .login-card .info-box strong { color: var(--text); }
+
+        .pdfl { display: none; position: fixed; inset: 0; background: var(--pdfl-bg); z-index: 500; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+        .pdfl.active { display: flex; }
+        .pdfl .sp { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: sp 0.8s linear infinite; }
+        @keyframes sp { to { transform: rotate(360deg); } }
+        .pdfl p { color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
+
+        /* ===== TOUCH DEVICE OVERRIDES ===== */
+        @media (hover: none) and (pointer: coarse) {
+            tbody tr:hover { background: transparent !important; }
+            tbody td .editable:hover { background: transparent !important; border-color: transparent !important; }
+            tbody td .editable:hover::after { opacity: 0; }
+            .actions button:hover { background: transparent; color: var(--text-muted); }
+            .actions .del:hover { background: transparent; color: var(--text-muted); }
+            .stat:hover { box-shadow: none; }
+            .btn:hover { transform: none; box-shadow: none; }
+            .logo-upload .file-label:hover { background: transparent !important; border-color: var(--border); }
+            .logo-upload .remove-btn:hover { background: none; border-color: transparent; }
+            .sortable:hover { background: transparent !important; }
+            .editable { -webkit-user-select: text; user-select: text; }
+            /* Use active state instead of hover for touch */
+            .actions button:active { background: var(--surface-hover); color: var(--text); }
+            .actions .del:active { background: var(--danger-light); color: var(--danger); }
+            .btn-primary:active { background: var(--accent-hover); }
+            .btn-secondary:active { background: var(--surface-hover); border-color: #c0c4cc; }
+            tbody td .editable:active { background: var(--surface-hover); }
+            /* Dark mode touch overrides */
+            [data-theme="dark"] tbody tr:hover { background: transparent !important; }
+            [data-theme="dark"] tbody td .editable:hover { background: transparent !important; border-color: transparent !important; }
+            [data-theme="dark"] .actions button:hover { background: transparent; color: var(--text-muted); }
+            [data-theme="dark"] .actions .del:hover { background: transparent; color: var(--text-muted); }
+            [data-theme="dark"] .stat:hover { border-color: var(--border); }
+            [data-theme="dark"] .actions button:active { background: var(--hover-btn); color: var(--accent); }
+            [data-theme="dark"] .actions .del:active { background: rgba(248,113,113,0.15); color: var(--danger); }
+        }
+
+        @media (max-width: 768px) {
+            .header { padding: 0 max(12px, env(safe-area-inset-right, 12px)); height: 56px; }
+            .header .logo { font-size: 1rem; gap: 8px; }
+            .header .logo span { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .header .logo svg { width: 24px; height: 24px; flex-shrink: 0; }
+            .record-count { font-size: 0.75rem; padding: 4px 6px; }
+            .logout-btn { padding: 4px 8px; font-size: 0.72rem; }
+            .logout-btn .btn-text { display: none; }
+            .profile-btn, .theme-toggle { width: 32px; height: 32px; }
+            .profile-btn svg, .theme-toggle svg { width: 16px; height: 16px; }
+            .content { padding: max(12px, env(safe-area-inset-bottom, 12px)) max(12px, env(safe-area-inset-right, 12px)); }
+            .toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
+            .tl, .tr { flex-wrap: wrap; }
+            .tl { width: 100%; }
+            .tr { width: 100%; justify-content: stretch; }
+            .search-box { width: 100%; max-width: 100%; }
+            .tr .btn { flex: 1; min-width: 0; padding: 10px 10px; font-size: 0.82rem; justify-content: center; }
+            .tr .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+            .dashboard { gap: 10px; }
+            .stat { min-width: 120px; padding: 14px 16px; }
+            .stat .val { font-size: 1.3rem; }
+            .table-scroll { max-height: calc(100vh - 240px); }
+            table { font-size: 0.82rem; min-width: 700px; }
+            thead th { padding: 10px 10px; font-size: 0.72rem; }
+            tbody td { padding: 8px 10px; }
+            .actions button { width: 36px; height: 36px; }
+            .actions button svg { width: 18px; height: 18px; }
+            .fg { grid-template-columns: 1fr; gap: 14px; }
+            .modal { max-width: 100%; border-radius: var(--radius); margin: 8px; max-height: 95vh; }
+            .modal-hdr { padding: 16px 20px; }
+            .modal-body { padding: 20px; }
+            .modal-ftr { padding: 14px 20px; }
+            .toasts { top: 64px; right: 12px; left: 12px; }
+            .toast { min-width: 0; max-width: 100%; }
+            .login-card { padding: 28px 24px 24px; }
+            .login-card .logo-lg span { font-size: 1.25rem; }
+        }
+
+        @media (max-width: 480px) {
+            .header .logo span { max-width: 110px; font-size: 0.9rem; }
+            .header { height: 50px; padding: 0 max(8px, env(safe-area-inset-right, 8px)); }
+            .content { padding: max(8px, env(safe-area-inset-bottom, 8px)) max(8px, env(safe-area-inset-right, 8px)); }
+            .tr { flex-wrap: wrap; gap: 6px; }
+            .tr .btn { flex: 1 1 calc(50% - 3px); font-size: 0.78rem; padding: 10px 6px; }
+            .tr .btn svg { width: 14px; height: 14px; }
+            .tr .btn .btn-label { display: none; }
+            .dashboard { gap: 8px; }
+            .stat { min-width: 100px; padding: 12px 14px; }
+            .stat .val { font-size: 1.1rem; }
+            .stat .lbl { font-size: 0.65rem; }
+            table { min-width: 600px; font-size: 0.78rem; }
+            thead th { padding: 8px 6px; font-size: 0.65rem; }
+            tbody td { padding: 6px; }
+            .actions button { width: 32px; height: 32px; }
+            .actions button svg { width: 16px; height: 16px; }
+            .login-card { padding: 24px 18px 20px; }
+            .login-card .logo-lg span { font-size: 1.1rem; }
+            .login-card .sub { font-size: 0.78rem; margin-bottom: 20px; padding-bottom: 16px; }
+            .modal { margin: 4px; }
+            .profile-modal .modal-body { padding: 16px 18px; }
+            .logo-preview { flex-direction: column; align-items: flex-start; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== LOGIN OVERLAY ===== -->
+    <div class="login-overlay active" id="loginOverlay">
+        <div class="login-card" id="loginCard">
+            <!-- Logo -->
+            <div class="logo-lg">
+                <img class="logo-img-lg" id="loginLogoImg" alt="Company logo">
+                <div class="logo-svg-lg" id="loginLogoSvg">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                </div>
+                <span>HG-TRANSPORT</span>
+            </div>
+            <div class="sub">Admin Database Access</div>
+
+            <!-- Create Account Form -->
+            <div id="createForm">
+                <div class="info-box">
+                    <strong>Welcome!</strong> This is the first time you're opening this app.
+                    Create an admin account to secure your customer database.
+                </div>
+                <div class="fg">
+                    <div class="fld"><label>Username <span class="req">*</span></label><input type="text" id="regUser" placeholder="admin" autocomplete="off"></div>
+                    <div class="fld"><label>Password <span class="req">*</span></label><input type="password" id="regPass" placeholder="At least 6 characters" autocomplete="new-password"></div>
+                    <div class="fld"><label>Confirm Password <span class="req">*</span></label><input type="password" id="regConfirm" placeholder="Repeat password" autocomplete="new-password"></div>
+                </div>
+                <button class="btn btn-primary" id="createBtn">Create Account</button>
+                <div class="err-msg" id="regErr"></div>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginForm" style="display:none;">
+                <div class="fg">
+                    <div class="fld"><label>Username</label><input type="text" id="loginUser" placeholder="Enter your username" autocomplete="off"></div>
+                    <div class="fld"><label>Password</label><input type="password" id="loginPass" placeholder="Enter your password" autocomplete="current-password"></div>
+                </div>
+                <button class="btn btn-primary" id="loginBtn">Sign In</button>
+                <div class="err-msg" id="loginErr"></div>
+            </div>
+
+            <div class="toggle-link" id="toggleLinkCreate" style="display:none;">
+                Don't have an account? <a id="gotoCreate">Create one</a>
+            </div>
+            <div class="toggle-link" id="toggleLinkLogin">
+                Already have an account? <a id="gotoLogin">Sign in</a>
+            </div>
+        </div>
+    </div>
+
+    <header class="header">
+        <div class="logo">
+            <img class="logo-img" id="headerLogoImg" alt="Company logo">
+            <div class="logo-svg" id="headerLogoSvg">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+            </div>
+            <span>HG-TRANSPORT DATABASE</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <button class="logout-btn" id="logoutBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="btn-text"> Sign Out</span></button>
+            <span class="record-count" id="rc">0 records</span>
+            <button class="profile-btn" id="profileBtn" title="Admin Profile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+            <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <div class="app-content" id="appContent" style="display:none;">
+    <div class="content">
+        <div class="toolbar">
+            <div class="tl">
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="text" id="search" placeholder="Search customers..." autocomplete="off">
+                </div>
+            </div>
+            <div class="tr">
+                <button class="btn btn-secondary" id="printBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Print</button>
+                <button class="btn btn-secondary" id="pdfBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> PDF</button>
+                <button class="btn btn-secondary" id="csvBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> CSV</button>
+                <button class="btn btn-primary" id="addBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Customer</button>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="stat"><div class="bar navy"></div><span class="lbl">Total Customers</span><span class="val" id="statTotal">0</span></div>
+            <div class="stat"><div class="bar orange"></div><span class="lbl">With Email</span><span class="val" id="statEmail">0</span></div>
+            <div class="stat"><div class="bar green"></div><span class="lbl">Total Records</span><span class="val" id="statRecords">0</span></div>
+        </div>
+
+        <div class="table-wrap">
+            <div class="table-scroll" id="ts">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-s="name" style="min-width:170px;">Name <span class="si">&#8597;</span></th>
+                            <th class="sortable" data-s="phone" style="min-width:150px;">Phone <span class="si">&#8597;</span></th>
+                            <th style="min-width:220px;">Email</th>
+                            <th style="min-width:220px;">Pickup Address</th>
+                            <th style="min-width:220px;">Delivery Address</th>
+                            <th style="width:76px;text-align:center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tb"></tbody>
+                </table>
+            </div>
+            <div class="empty" id="empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="12" y1="10" x2="12" y2="16"/>
+                </svg>
+                <h3>No customers yet</h3>
+                <p>Click "Add Customer" to create your first record.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">&copy; 2025 HG-TRANSPORT DATABASE &mdash; Data saves automatically in your browser.</div>
+
+    <div class="pdfl" id="pdfl"><div class="sp"></div><p>Generating PDF report...</p></div>
+
+    <div class="overlay" id="modal">
+        <div class="modal">
+            <div class="modal-hdr">
+                <h2 id="modalTitle">Add Customer</h2>
+                <button class="modal-close" id="modalClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <form id="form" autocomplete="off">
+                    <input type="hidden" id="editId">
+                    <div class="fg">
+                        <div class="fld"><label>Full Name <span class="req">*</span></label><input type="text" id="fName" required></div>
+                        <div class="fld"><label>Phone <span class="req">*</span></label><input type="tel" id="fPhone" required placeholder="(555) 123-4567"></div>
+                        <div class="fld"><label>Email</label><input type="email" id="fEmail" placeholder="john@example.com"></div>
+                        <div class="fld"><label>Contact Info</label><input type="text" id="fContact" placeholder="Alternative phone or notes"></div>
+                        <div class="fld fg-w"><label>Pickup Address <span class="req">*</span></label><input type="text" id="fPickup" required placeholder="123 Main St, Miami, FL 33101"></div>
+                        <div class="fld fg-w"><label>Delivery Address <span class="req">*</span></label><input type="text" id="fDelivery" required placeholder="456 Oak Ave, Newark, NJ 07101"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-ftr">
+                <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+                <button class="btn btn-primary" id="modalSave">Save Customer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay" id="delOverlay">
+        <div class="modal" style="max-width:400px;">
+            <div class="modal-hdr">
+                <h2>Delete Customer</h2>
+                <button class="modal-close" id="delClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body"><p style="color:var(--text-secondary);">Are you sure you want to delete <strong id="delName"></strong>? This cannot be undone.</p></div>
+            <div class="modal-ftr">
+                <button class="btn btn-secondary" id="delCancel">Cancel</button>
+                <button class="btn btn-danger" id="delConfirm">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ADMIN PROFILE MODAL ===== -->
+    <div class="overlay" id="profileOverlay">
+        <div class="modal profile-modal">
+            <div class="modal-hdr">
+                <h2>Admin Profile</h2>
+                <button class="modal-close" id="profileClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <!-- Logo Section -->
+                <div class="profile-section">
+                    <h3>Company Logo</h3>
+                    <div class="desc">Upload a custom logo to replace the default icon in the header and login screen.</div>
+                    <div class="logo-preview">
+                        <div class="current-logo" id="logoPreview">
+                            <svg id="logoPreviewSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                            <img id="logoPreviewImg" style="display:none;" alt="Custom logo">
+                        </div>
+                        <div>
+                            <div class="logo-upload">
+                                <div class="file-input-wrap">
+                                    <button class="file-label">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                        Upload Logo
+                                    </button>
+                                    <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml">
+                                </div>
+                                <button class="remove-btn" id="logoRemoveBtn" style="display:none;">Remove</button>
+                            </div>
+                            <div class="desc" style="margin-top:6px;">Supports PNG, JPG, GIF, WebP, SVG. Max 2MB.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password Section -->
+                <div class="profile-section">
+                    <h3>Change Password</h3>
+                    <div class="desc">Update your admin account password.</div>
+                    <div class="fg" style="grid-template-columns:1fr;">
+                        <div class="fld"><label>Current Password <span class="req">*</span></label><input type="password" id="curPass" placeholder="Enter current password" autocomplete="current-password"></div>
+                        <div class="fld"><label>New Password <span class="req">*</span></label><input type="password" id="newPass" placeholder="At least 6 characters" autocomplete="new-password"></div>
+                        <div class="fld"><label>Confirm New Password <span class="req">*</span></label><input type="password" id="newPassConfirm" placeholder="Repeat new password" autocomplete="new-password"></div>
+                    </div>
+                    <button class="btn btn-primary" id="changePassBtn" style="margin-top:12px;">Update Password</button>
+                    <div class="err-msg" id="passErr" style="margin-top:8px;"></div>
+                    <div class="success-msg" id="passSuccess" style="margin-top:8px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toasts" id="toasts"></div>
+    </div><!-- /app-content -->
+
+    <script>
+        const STORAGE_KEY = 'customer_db';
+        let data = [], sortField = null, sortDir = 'asc', deleteId = null;
+
+        function load() { try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { data = []; } }
+        function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+        function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+        function toast(msg, type) {
+            type = type || 'success';
+            const c = document.getElementById('toasts');
+            const ic = type === 'success'
+                ? '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+                : '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+            const t = document.createElement('div');
+            t.className = 'toast ' + (type === 'success' ? 'su' : 'er');
+            t.innerHTML = ic + '<span class="msg">' + msg + '</span>';
+            c.appendChild(t);
+            setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 250); }, 3000);
+        }
+
+        function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+        function phone(s) { if (!s) return ''; const d = s.replace(/\D/g, ''); if (d.length !== 10) return s; return '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6); }
+
+        function dash(arr) {
+            document.getElementById('statTotal').textContent = arr.length;
+            document.getElementById('statEmail').textContent = arr.filter(r => r.email && r.email.includes('@')).length;
+            document.getElementById('statRecords').textContent = arr.length;
+        }
+
+        function render() {
+            const tb = document.getElementById('tb'), empty = document.getElementById('empty');
+            const q = document.getElementById('search').value.toLowerCase().trim();
+            let f = data.filter(r => { const s = (r.name + ' ' + r.phone + ' ' + r.email + ' ' + r.contact + ' ' + r.pickup + ' ' + r.delivery).toLowerCase(); return !q || s.includes(q); });
+
+            if (sortField) {
+                f.sort((a, b) => {
+                    let va = (a[sortField] || '').toString().toLowerCase();
+                    let vb = (b[sortField] || '').toString().toLowerCase();
+                    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+                    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            dash(f);
+            document.getElementById('rc').textContent = f.length + ' record' + (f.length !== 1 ? 's' : '');
+            if (!f.length) { tb.innerHTML = ''; empty.style.display = 'block'; return; }
+            empty.style.display = 'none';
+
+            let html = '';
+            f.forEach(r => {
+                html += '<tr data-id="' + r.id + '">' +
+                    '<td class="name"><span class="editable" data-f="name" data-id="' + r.id + '">' + esc(r.name) + '</span></td>' +
+                    '<td><span class="editable" data-f="phone" data-id="' + r.id + '">' + esc(phone(r.phone)) + '</span></td>' +
+                    '<td><span class="editable" data-f="email" data-id="' + r.id + '">' + esc(r.email) + '</span></td>' +
+                    '<td><span class="editable" data-f="pickup" data-id="' + r.id + '">' + esc(r.pickup) + '</span></td>' +
+                    '<td><span class="editable" data-f="delivery" data-id="' + r.id + '">' + esc(r.delivery) + '</span></td>' +
+                    '<td><div class="actions">' +
+                        '<button class="edit" data-id="' + r.id + '" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
+                        '<button class="del" data-id="' + r.id + '" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
+                    '</div></td></tr>';
+            });
+            tb.innerHTML = html;
+        }
+
+        document.getElementById('tb').addEventListener('blur', function(e) {
+            const s = e.target.closest('.editable');
+            if (!s) return;
+            const id = s.dataset.id, f = s.dataset.f;
+            const r = data.find(x => x.id === id);
+            if (!r) return;
+            const v = s.textContent.trim();
+            if (r[f] !== v) { r[f] = f === 'phone' ? v.replace(/\D/g, '').slice(0,10) : v; save(); render(); toast('Updated'); }
+        }, true);
+
+        document.getElementById('tb').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); const s = e.target.closest('.editable'); if (s) s.blur(); } });
+
+        function openAdd() {
+            document.getElementById('editId').value = ''; document.getElementById('modalTitle').textContent = 'Add Customer';
+            document.getElementById('modalSave').textContent = 'Save Customer'; document.getElementById('form').reset();
+            document.getElementById('modal').classList.add('active'); setTimeout(() => document.getElementById('fName').focus(), 100);
+        }
+
+        function openEdit(id) {
+            const r = data.find(x => x.id === id); if (!r) return;
+            document.getElementById('editId').value = id; document.getElementById('modalTitle').textContent = 'Edit Customer';
+            document.getElementById('modalSave').textContent = 'Update Customer';
+            document.getElementById('fName').value = r.name || ''; document.getElementById('fPhone').value = r.phone || '';
+            document.getElementById('fEmail').value = r.email || ''; document.getElementById('fContact').value = r.contact || '';
+            document.getElementById('fPickup').value = r.pickup || ''; document.getElementById('fDelivery').value = r.delivery || '';
+            document.getElementById('modal').classList.add('active'); setTimeout(() => document.getElementById('fName').focus(), 100);
+        }
+
+        function closeModal() { document.getElementById('modal').classList.remove('active'); }
+
+        function saveModal() {
+            const name = document.getElementById('fName').value.trim();
+            const phone = document.getElementById('fPhone').value.trim().replace(/\D/g, '').slice(0,10);
+            if (!name) { toast('Name is required', 'error'); document.getElementById('fName').focus(); return; }
+            if (!phone || phone.length < 10) { toast('Valid 10-digit phone required', 'error'); document.getElementById('fPhone').focus(); return; }
+            if (!document.getElementById('fPickup').value.trim()) { toast('Pickup address is required', 'error'); document.getElementById('fPickup').focus(); return; }
+            if (!document.getElementById('fDelivery').value.trim()) { toast('Delivery address is required', 'error'); document.getElementById('fDelivery').focus(); return; }
+
+            const eid = document.getElementById('editId').value;
+            const obj = { name, phone, email: document.getElementById('fEmail').value.trim(), contact: document.getElementById('fContact').value.trim(), pickup: document.getElementById('fPickup').value.trim(), delivery: document.getElementById('fDelivery').value.trim() };
+            if (eid) { const idx = data.findIndex(r => r.id === eid); if (idx !== -1) { data[idx] = { ...data[idx], ...obj }; toast('Customer updated'); } }
+            else { obj.id = genId(); data.push(obj); toast('Customer added'); }
+            save(); render(); closeModal();
+        }
+
+        function openDel(id) { const r = data.find(x => x.id === id); if (!r) return; deleteId = id; document.getElementById('delName').textContent = r.name; document.getElementById('delOverlay').classList.add('active'); }
+        function closeDel() { deleteId = null; document.getElementById('delOverlay').classList.remove('active'); }
+        function confirmDel() { if (!deleteId) return; data = data.filter(r => r.id !== deleteId); save(); render(); closeDel(); toast('Customer deleted'); }
+
+        function printReport() {
+            if (!data.length) { toast('No data to print', 'error'); return; }
+            const h = document.createElement('div'); h.className = 'ph';
+            h.innerHTML = '<h1>HG-TRANSPORT DATABASE</h1><p>Generated ' + new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</p>';
+            const s = document.createElement('div'); s.className = 'ps';
+            s.innerHTML = '<div><strong>' + data.length + '</strong><span>Total Customers</span></div>';
+            document.body.insertBefore(h, document.querySelector('.content'));
+            document.body.insertBefore(s, document.querySelector('.content'));
+            setTimeout(() => { window.print(); h.remove(); s.remove(); }, 200);
+        }
+
+        function generatePDF() {
+            if (!data.length) { toast('No data to export as PDF', 'error'); return; }
+            if (typeof jspdf === 'undefined') { toast('PDF library loading...', 'error'); return; }
+            document.getElementById('pdfl').classList.add('active');
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    try {
+                        const { jsPDF } = window.jspdf;
+                        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
+                        const pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight(), m = 12;
+
+                        doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(26,54,93);
+                        doc.text('HG-TRANSPORT DATABASE', m, m + 8);
+                        doc.setDrawColor(237,137,54); doc.setLineWidth(0.8);
+                        doc.line(m, m + 9.5, m + 50, m + 9.5);
+                        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100,116,139);
+                        doc.text('Customer List \u2014 ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), m, m + 14.5);
+
+                        doc.setFillColor(248,250,252); doc.roundedRect(m, m + 20, pw - m * 2, 10, 1.5, 1.5, 'F');
+                        doc.setDrawColor(229,231,235); doc.roundedRect(m, m + 20, pw - m * 2, 10, 1.5, 1.5, 'S');
+                        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(26,54,93);
+                        doc.text(data.length + ' Total Customers', pw / 2, m + 27.5, { align: 'center' });
+
+                        const cols = [{ h: 'Name', k: 'name', w: 50 }, { h: 'Phone', k: 'phone', w: 32 }, { h: 'Email', k: 'email', w: 55 }, { h: 'Pickup', k: 'pickup', w: 55 }, { h: 'Delivery', k: 'delivery', w: 55 }];
+                        const rh = 7, hh = 8; let cx = m;
+                        const cp = cols.map(c => { const p = cx; cx += c.w; return { ...c, x: p }; });
+                        const tw = cp.reduce((s, c) => s + c.w, 0);
+                        let y = m + 35;
+
+                        doc.setFillColor(26,54,93); doc.rect(m, y, tw, hh, 'F');
+                        doc.setTextColor(255,255,255); doc.setFont('helvetica', 'bold'); doc.setFontSize(6);
+                        cp.forEach(c => doc.text(c.h, c.x + 1.2, y + 5.2)); y += hh; let rn = 0;
+
+                        for (const r of data) {
+                            if (y + rh > ph - m) {
+                                doc.addPage(); y = m + 8;
+                                doc.setFillColor(26,54,93); doc.rect(m, y, tw, hh, 'F');
+                                doc.setTextColor(255,255,255); doc.setFont('helvetica', 'bold'); doc.setFontSize(6);
+                                cp.forEach(c => doc.text(c.h, c.x + 1.2, y + 5.2)); y += hh;
+                            }
+                            doc.setFillColor(rn % 2 === 0 ? 249 : 255, rn % 2 === 0 ? 250 : 255, rn % 2 === 0 ? 251 : 255);
+                            doc.rect(m, y, tw, rh, 'F'); doc.setDrawColor(229,231,235); doc.line(m, y, m + tw, y);
+                            const vals = { name: r.name || '', phone: phone(r.phone) || '', email: r.email || '', pickup: r.pickup || '', delivery: r.delivery || '' };
+                            doc.setFont('helvetica', 'normal'); doc.setFontSize(5.8);
+                            cp.forEach((c, i) => {
+                                let v = vals[c.k] || '';
+                                doc.setFont('helvetica', i === 0 ? 'bold' : 'normal'); doc.setTextColor(30,41,59);
+                                if (v.length > Math.floor(c.w / 1.8)) v = v.substring(0, Math.floor(c.w / 1.8) - 1) + '\u2026';
+                                doc.text(v, c.x + 1.2, y + 5);
+                            });
+                            y += rh; rn++;
+                        }
+                        doc.setDrawColor(229,231,235); doc.line(m, y, m + tw, y);
+
+                        for (let i = 0; i < doc.internal.getNumberOfPages(); i++) {
+                            doc.setPage(i + 1);
+                            doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(156,163,175);
+                            doc.text('HG-TRANSPORT DATABASE \u2014 Auto Transport', m, ph - 5);
+                            doc.text('Page ' + (i + 1) + ' of ' + doc.internal.getNumberOfPages(), pw - m, ph - 5, { align: 'right' });
+                        }
+                        doc.save('Customer_Database_' + new Date().toISOString().slice(0,10) + '.pdf');
+                        document.getElementById('pdfl').classList.remove('active');
+                        toast('PDF report generated');
+                    } catch (err) { document.getElementById('pdfl').classList.remove('active'); console.error(err); toast('PDF failed: ' + err.message, 'error'); }
+                }, 100);
+            });
+        }
+
+        function exportCSV() {
+            if (!data.length) { toast('No data to export', 'error'); return; }
+            const h = ['Name','Phone','Email','Contact Info','Pickup Address','Delivery Address'];
+            const rows = data.map(r => [r.name||'', phone(r.phone)||'', r.email||'', r.contact||'', r.pickup||'', r.delivery||'']);
+            const csv = [h.join(','), ...rows.map(r => r.map(v => '"' + v + '"').join(','))].join('\n');
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'Customers_' + new Date().toISOString().slice(0,10) + '.csv';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast('CSV exported');
+        }
+
+        document.querySelectorAll('.sortable').forEach(th => {
+            th.addEventListener('click', function() {
+                const f = this.dataset.s;
+                if (sortField === f) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+                else { sortField = f; sortDir = 'asc'; }
+                document.querySelectorAll('.sortable').forEach(s => s.classList.remove('sort-asc','sort-desc'));
+                this.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+                render();
+            });
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (document.getElementById('modal').classList.contains('active')) closeModal();
+                if (document.getElementById('delOverlay').classList.contains('active')) closeDel();
+                if (document.getElementById('profileOverlay').classList.contains('active')) document.getElementById('profileOverlay').classList.remove('active');
+            }
+        });
+
+        document.getElementById('search').addEventListener('input', render);
+        document.getElementById('addBtn').addEventListener('click', openAdd);
+        document.getElementById('modalClose').addEventListener('click', closeModal);
+        document.getElementById('modalCancel').addEventListener('click', closeModal);
+        document.getElementById('modalSave').addEventListener('click', saveModal);
+        document.getElementById('modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+        document.getElementById('form').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); saveModal(); } });
+        document.getElementById('delClose').addEventListener('click', closeDel);
+        document.getElementById('delCancel').addEventListener('click', closeDel);
+        document.getElementById('delConfirm').addEventListener('click', confirmDel);
+        document.getElementById('delOverlay').addEventListener('click', function(e) { if (e.target === this) closeDel(); });
+        document.getElementById('tb').addEventListener('click', function(e) {
+            const btn = e.target.closest('button');
+            if (!btn) return; const id = btn.dataset.id;
+            if (btn.classList.contains('edit') && id) openEdit(id);
+            else if (btn.classList.contains('del') && id) openDel(id);
+        });
+        document.getElementById('printBtn').addEventListener('click', printReport);
+        document.getElementById('pdfBtn').addEventListener('click', generatePDF);
+        document.getElementById('csvBtn').addEventListener('click', exportCSV);
+
+        // ============================================================
+        // AUTH — Create Account / Login / Logout
+        // ============================================================
+        const AUTH_KEY = 'hg_transport_auth';
+        const SESSION_KEY = 'hg_transport_session';
+
+        function hash(str) {
+            let h = 0;
+            for (let i = 0; i < str.length; i++) {
+                const c = str.charCodeAt(i);
+                h = ((h << 5) - h) + c;
+                h |= 0;
+            }
+            return 'h' + (h >>> 0).toString(36);
+        }
+
+        function getStoredAuth() {
+            try { return JSON.parse(localStorage.getItem(AUTH_KEY)); } catch { return null; }
+        }
+
+        function setStoredAuth(username, passwordHash) {
+            localStorage.setItem(AUTH_KEY, JSON.stringify({ username, hash: passwordHash }));
+        }
+
+        function isLoggedIn() {
+            return localStorage.getItem(SESSION_KEY) === '1';
+        }
+
+        function doLogin() {
+            localStorage.setItem(SESSION_KEY, '1');
+            document.getElementById('loginOverlay').classList.remove('active');
+            document.getElementById('logoutBtn').classList.add('show');
+            document.getElementById('appContent').style.display = 'block';
+            render();
+        }
+
+        function doLogout() {
+            localStorage.removeItem(SESSION_KEY);
+            document.getElementById('loginOverlay').classList.add('active');
+            document.getElementById('logoutBtn').classList.remove('show');
+            document.getElementById('appContent').style.display = 'none';
+            document.getElementById('loginUser').value = '';
+            document.getElementById('loginPass').value = '';
+            document.getElementById('loginErr').classList.remove('show');
+            document.getElementById('loginCard').querySelector('.sub').textContent = 'Admin Database Access';
+            // Show login form only — account already exists, no new registrations
+            document.getElementById('createForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('toggleLinkCreate').style.display = 'none';
+            document.getElementById('toggleLinkLogin').style.display = 'none';
+        }
+
+        function showAuth() {
+            const auth = getStoredAuth();
+            if (!auth) {
+                // No account exists — show create form
+                document.getElementById('createForm').style.display = 'block';
+                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('toggleLinkCreate').style.display = 'none';
+                document.getElementById('toggleLinkLogin').style.display = 'block';
+                document.getElementById('loginCard').querySelector('.sub').textContent = 'Create Your Admin Account';
+            } else {
+                // Account exists — show login form only, no registration allowed
+                document.getElementById('createForm').style.display = 'none';
+                document.getElementById('loginForm').style.display = 'block';
+                document.getElementById('toggleLinkCreate').style.display = 'none';
+                document.getElementById('toggleLinkLogin').style.display = 'none';
+                document.getElementById('loginCard').querySelector('.sub').textContent = 'Sign in to access your database';
+            }
+        }
+
+        // Create Account
+        document.getElementById('createBtn').addEventListener('click', function() {
+            // Reject if an admin account already exists
+            if (getStoredAuth()) {
+                toast('An admin account already exists.', 'error');
+                return;
+            }
+            const user = document.getElementById('regUser').value.trim();
+            const pass = document.getElementById('regPass').value;
+            const confirm = document.getElementById('regConfirm').value;
+            const errEl = document.getElementById('regErr');
+
+            if (!user) { errEl.textContent = 'Please enter a username.'; errEl.classList.add('show'); return; }
+            if (user.length < 3) { errEl.textContent = 'Username must be at least 3 characters.'; errEl.classList.add('show'); return; }
+            if (!pass || pass.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.add('show'); return; }
+            if (pass !== confirm) { errEl.textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
+
+            errEl.classList.remove('show');
+            setStoredAuth(user, hash(pass));
+            doLogin();
+            toast('Account created. Welcome, ' + user + '!');
+        });
+
+        // Login
+        document.getElementById('loginBtn').addEventListener('click', function() {
+            const user = document.getElementById('loginUser').value.trim();
+            const pass = document.getElementById('loginPass').value;
+            const errEl = document.getElementById('loginErr');
+            const auth = getStoredAuth();
+
+            if (!auth) { errEl.textContent = 'No account found. Please create one first.'; errEl.classList.add('show'); return; }
+            if (!user) { errEl.textContent = 'Please enter your username.'; errEl.classList.add('show'); return; }
+            if (!pass) { errEl.textContent = 'Please enter your password.'; errEl.classList.add('show'); return; }
+            if (user !== auth.username || hash(pass) !== auth.hash) {
+                errEl.textContent = 'Invalid username or password.';
+                errEl.classList.add('show');
+                return;
+            }
+
+            errEl.classList.remove('show');
+            doLogin();
+            toast('Welcome back, ' + user + '!');
+        });
+
+        // Toggle between create and login
+        document.getElementById('gotoLogin').addEventListener('click', function() {
+            document.getElementById('createForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('toggleLinkCreate').style.display = 'block';
+            document.getElementById('toggleLinkLogin').style.display = 'none';
+            document.getElementById('loginCard').querySelector('.sub').textContent = 'Sign in to access your database';
+            document.getElementById('loginUser').focus();
+        });
+
+        document.getElementById('gotoCreate').addEventListener('click', function() {
+            // Block access to create form if an account already exists
+            if (getStoredAuth()) return;
+            document.getElementById('createForm').style.display = 'block';
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('toggleLinkCreate').style.display = 'none';
+            document.getElementById('toggleLinkLogin').style.display = 'block';
+            document.getElementById('loginCard').querySelector('.sub').textContent = 'Create Your Admin Account';
+            document.getElementById('regUser').focus();
+        });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to sign out?')) doLogout();
+        });
+
+        // Enter key in login/register forms
+        document.getElementById('regConfirm').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('createBtn').click(); } });
+        document.getElementById('loginPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('loginBtn').click(); } });
+        document.getElementById('regPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('regConfirm').focus(); } });
+
+        // ============================================================
+        // ADMIN PROFILE — Logo Upload & Password Change
+        // ============================================================
+        const LOGO_KEY = 'hg_transport_logo';
+
+        function getSavedLogo() {
+            return localStorage.getItem(LOGO_KEY);
+        }
+
+        function applyLogo(src) {
+            const headerLogoImg = document.querySelector('.logo .logo-img');
+            const headerLogoSvg = document.querySelector('.logo .logo-svg');
+            const loginLogoImg = document.querySelector('.logo-lg .logo-img-lg');
+            const loginLogoSvg = document.querySelector('.logo-lg .logo-svg-lg');
+            const previewImg = document.getElementById('logoPreviewImg');
+            const previewSvg = document.getElementById('logoPreviewSvg');
+
+            if (src) {
+                // Show images, hide SVGs
+                if (headerLogoImg) { headerLogoImg.src = src; headerLogoImg.classList.add('show'); }
+                if (headerLogoSvg) headerLogoSvg.classList.add('hide');
+                if (loginLogoImg) { loginLogoImg.src = src; loginLogoImg.classList.add('show'); }
+                if (loginLogoSvg) loginLogoSvg.classList.add('hide');
+                // Modal preview
+                if (previewImg) { previewImg.src = src; previewImg.style.display = 'block'; }
+                if (previewSvg) previewSvg.style.display = 'none';
+                document.getElementById('logoRemoveBtn').style.display = 'inline-block';
+            } else {
+                // Show SVGs, hide images
+                if (headerLogoImg) headerLogoImg.classList.remove('show');
+                if (headerLogoSvg) headerLogoSvg.classList.remove('hide');
+                if (loginLogoImg) loginLogoImg.classList.remove('show');
+                if (loginLogoSvg) loginLogoSvg.classList.remove('hide');
+                // Modal preview
+                if (previewImg) { previewImg.src = ''; previewImg.style.display = 'none'; }
+                if (previewSvg) previewSvg.style.display = 'block';
+                document.getElementById('logoRemoveBtn').style.display = 'none';
+            }
+        }
+
+        // Open profile modal
+        document.getElementById('profileBtn').addEventListener('click', function() {
+            // Reset messages
+            document.getElementById('passErr').classList.remove('show');
+            document.getElementById('passErr').textContent = '';
+            document.getElementById('passSuccess').classList.remove('show');
+            document.getElementById('passSuccess').textContent = '';
+            document.getElementById('curPass').value = '';
+            document.getElementById('newPass').value = '';
+            document.getElementById('newPassConfirm').value = '';
+            document.getElementById('profileOverlay').classList.add('active');
+        });
+
+        // Close profile modal
+        document.getElementById('profileClose').addEventListener('click', function() {
+            document.getElementById('profileOverlay').classList.remove('active');
+        });
+        document.getElementById('profileOverlay').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('active');
+        });
+
+        // Logo upload
+        document.getElementById('logoFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                toast('Logo must be under 2MB', 'error');
+                this.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const dataUrl = ev.target.result;
+                localStorage.setItem(LOGO_KEY, dataUrl);
+                applyLogo(dataUrl);
+                toast('Logo updated successfully');
+            };
+            reader.onerror = function() {
+                toast('Failed to read file', 'error');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Logo remove
+        document.getElementById('logoRemoveBtn').addEventListener('click', function() {
+            localStorage.removeItem(LOGO_KEY);
+            applyLogo(null);
+            document.getElementById('logoFileInput').value = '';
+            toast('Logo removed');
+        });
+
+        // Change password
+        document.getElementById('changePassBtn').addEventListener('click', function() {
+            const cur = document.getElementById('curPass').value;
+            const newP = document.getElementById('newPass').value;
+            const confirm = document.getElementById('newPassConfirm').value;
+            const errEl = document.getElementById('passErr');
+            const sucEl = document.getElementById('passSuccess');
+
+            errEl.classList.remove('show');
+            sucEl.classList.remove('show');
+
+            const auth = getStoredAuth();
+            if (!auth) { errEl.textContent = 'No account found. Please re-login.'; errEl.classList.add('show'); return; }
+            if (!cur) { errEl.textContent = 'Please enter your current password.'; errEl.classList.add('show'); return; }
+            if (hash(cur) !== auth.hash) { errEl.textContent = 'Current password is incorrect.'; errEl.classList.add('show'); return; }
+            if (!newP || newP.length < 6) { errEl.textContent = 'New password must be at least 6 characters.'; errEl.classList.add('show'); return; }
+            if (newP !== confirm) { errEl.textContent = 'New passwords do not match.'; errEl.classList.add('show'); return; }
+            if (newP === cur) { errEl.textContent = 'New password must be different from current.'; errEl.classList.add('show'); return; }
+
+            setStoredAuth(auth.username, hash(newP));
+            document.getElementById('curPass').value = '';
+            document.getElementById('newPass').value = '';
+            document.getElementById('newPassConfirm').value = '';
+            sucEl.textContent = 'Password updated successfully!';
+            sucEl.classList.add('show');
+            toast('Password changed');
+        });
+
+        // Enter key support in password fields
+        document.getElementById('newPassConfirm').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('changePassBtn').click(); } });
+        document.getElementById('newPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newPassConfirm').focus(); } });
+
+        // ============================================================
+        // DARK MODE
+        // ============================================================
+        const DARK_KEY = 'customer_db_theme';
+        const moonSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+        const sunSvg  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+        const html = document.documentElement;
+        const themeBtn = document.getElementById('themeToggle');
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                html.setAttribute('data-theme', 'dark');
+                themeBtn.innerHTML = sunSvg;
+                themeBtn.title = 'Switch to light mode';
+            } else {
+                html.removeAttribute('data-theme');
+                themeBtn.innerHTML = moonSvg;
+                themeBtn.title = 'Switch to dark mode';
+            }
+        }
+
+        function getTheme() {
+            const saved = localStorage.getItem(DARK_KEY);
+            return saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        }
+
+        function toggleTheme() {
+            const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+            localStorage.setItem(DARK_KEY, next);
+        }
+
+        // Init — apply without saving (saving only happens on explicit toggle)
+        applyTheme(getTheme());
+
+        // System theme change — only if user hasn't saved an explicit preference
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            if (!localStorage.getItem(DARK_KEY)) applyTheme(e.matches ? 'dark' : 'light');
+        });
+
+        themeBtn.addEventListener('click', toggleTheme);
+
+        load();
+
+        // Load saved logo if exists
+        const savedLogo = getSavedLogo();
+        if (savedLogo) applyLogo(savedLogo);
+
+        // Auth check — show app if already logged in
+        if (isLoggedIn()) {
+            document.getElementById('loginOverlay').classList.remove('active');
+            document.getElementById('logoutBtn').classList.add('show');
+            document.getElementById('appContent').style.display = 'block';
+            render();
+        } else {
+            showAuth();
+            document.getElementById('loginOverlay').classList.add('active');
+        }
+
+        if (!data.length) {
+            const samples = [
+                { name: 'Michael Johnson', phone: '3055550147', email: 'michael.j@email.com', contact: '', pickup: '123 Main St, Miami, FL 33101', delivery: '456 Oak Ave, Newark, NJ 07101' },
+                { name: 'Sarah Rodriguez', phone: '7865550234', email: 'sarah.r@email.com', contact: '786-555-9999', pickup: '789 Pine Rd, Orlando, FL 32801', delivery: '321 Elm St, Philadelphia, PA 19101' },
+                { name: 'David Williams', phone: '9545550398', email: 'david.w@email.com', contact: '', pickup: '555 Beach Blvd, Tampa, FL 33601', delivery: '888 Market St, Baltimore, MD 21201' },
+                { name: 'Lisa Martinez', phone: '5615550789', email: '', contact: '561-555-1111', pickup: '777 Atlantic Ave, West Palm Beach, FL 33401', delivery: '444 Pennsylvania Ave, Washington, DC 20001' },
+                { name: 'Robert Thompson', phone: '2015550921', email: 'robert.t@email.com', contact: '', pickup: '222 Bay St, Jacksonville, FL 32201', delivery: '999 Broadway, New York, NY 10001' }
+            ];
+            samples.forEach(s => { s.id = genId(); data.push(s); });
+            save(); render();
+        }
+    </script>
+</body>
+</html>
