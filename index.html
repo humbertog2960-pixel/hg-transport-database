@@ -803,8 +803,8 @@
             h.innerHTML = '<h1>HG-TRANSPORT DATABASE</h1><p>Generated ' + new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</p>';
             const s = document.createElement('div'); s.className = 'ps';
             s.innerHTML = '<div><strong>' + data.length + '</strong><span>Total Customers</span></div>';
-            document.body.insertBefore(h, document.querySelector('.content'));
-            document.body.insertBefore(s, document.querySelector('.content'));
+            document.querySelector('.content').before(h);
+            document.querySelector('.content').before(s);
             setTimeout(() => { window.print(); h.remove(); s.remove(); }, 200);
         }
 
