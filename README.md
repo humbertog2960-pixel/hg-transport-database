@@ -2,7 +2,7 @@
 
 A single-page, Excel-like customer database app for auto transport businesses. Manage customer records with add/edit/delete, search, sort, print, PDF export, and CSV export — all in your browser.
 
-> **Live demo:** [Open the app](https://your-username.github.io/hg-transport-database/) (after enabling GitHub Pages)
+> **Live demo:** [Open the app](https://humbertog2960-pixel.github.io/hg-transport-database/) (after enabling GitHub Pages)
 
 ---
 
@@ -74,7 +74,7 @@ To make the app accessible from any device:
 1. Push the file to a GitHub repository
 2. Go to **Settings → Pages** in your repo
 3. Set the source to **main branch**
-4. Your app will be live at `https://your-username.github.io/hg-transport-database/`
+4. Your app will be live at `https://humbertog2960-pixel.github.io/hg-transport-database/`
 
 ---
 
