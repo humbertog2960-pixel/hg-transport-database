@@ -735,6 +735,41 @@
                     <div class="err-msg" id="passErr" style="margin-top:8px;"></div>
                     <div class="success-msg" id="passSuccess" style="margin-top:8px;"></div>
                 </div>
+
+                <!-- Security Question Section -->
+                <div class="profile-section">
+                    <h3>Security Question</h3>
+                    <div class="desc">Update the security question used to reset your password if you forget it.</div>
+                    <div class="fg" style="grid-template-columns:1fr;">
+                        <div class="fld">
+                            <label>Current Question</label>
+                            <p id="profileCurrentQ" style="font-weight:500;padding:8px 0;color:var(--text);font-size:0.9rem;"></p>
+                        </div>
+                        <div class="fld">
+                            <label>New Security Question <span class="req">*</span></label>
+                            <select id="profileSecurityQ" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:0.9rem;font-family:var(--font);background:var(--surface);color:var(--text);transition:border-color 0.2s,box-shadow 0.2s;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239099a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E&#34;);background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;">
+                                <option value="">Select a question...</option>
+                                <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+                                <option value="What was the name of your elementary school?">What was the name of your elementary school?</option>
+                                <option value="What city were you born in?">What city were you born in?</option>
+                                <option value="What is your favorite movie?">What is your favorite movie?</option>
+                                <option value="What was your first car?">What was your first car?</option>
+                                <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+                            </select>
+                        </div>
+                        <div class="fld">
+                            <label>New Security Answer <span class="req">*</span></label>
+                            <input type="text" id="profileSecurityA" placeholder="Enter your answer (case-insensitive)" autocomplete="off">
+                        </div>
+                        <div class="fld">
+                            <label>Confirm Your Password <span class="req">*</span></label>
+                            <input type="password" id="profileSecPass" placeholder="Enter current password to confirm" autocomplete="current-password">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="changeSecBtn" style="margin-top:12px;">Update Security Question</button>
+                    <div class="err-msg" id="secErr" style="margin-top:8px;"></div>
+                    <div class="success-msg" id="secSuccess" style="margin-top:8px;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1375,6 +1410,19 @@
             document.getElementById('curPass').value = '';
             document.getElementById('newPass').value = '';
             document.getElementById('newPassConfirm').value = '';
+            // Reset security question section
+            document.getElementById('secErr').classList.remove('show');
+            document.getElementById('secErr').textContent = '';
+            document.getElementById('secSuccess').classList.remove('show');
+            document.getElementById('secSuccess').textContent = '';
+            document.getElementById('profileSecurityQ').value = '';
+            document.getElementById('profileSecurityA').value = '';
+            document.getElementById('profileSecPass').value = '';
+            // Show current security question
+            const auth = getStoredAuth();
+            document.getElementById('profileCurrentQ').textContent = auth && hasSecurityQuestion(auth)
+                ? auth.security_question
+                : 'No security question set';
             document.getElementById('profileOverlay').classList.add('active');
         });
 
@@ -1435,7 +1483,7 @@
             if (newP !== confirm) { errEl.textContent = 'New passwords do not match.'; errEl.classList.add('show'); return; }
             if (newP === cur) { errEl.textContent = 'New password must be different from current.'; errEl.classList.add('show'); return; }
 
-            setStoredAuth(auth.username, hash(newP));
+            setStoredAuth(auth.username, hash(newP), auth.security_question, auth.security_answer);
             document.getElementById('curPass').value = '';
             document.getElementById('newPass').value = '';
             document.getElementById('newPassConfirm').value = '';
@@ -1447,6 +1495,45 @@
         // Enter key support in password fields
         document.getElementById('newPassConfirm').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('changePassBtn').click(); } });
         document.getElementById('newPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newPassConfirm').focus(); } });
+
+        // Change security question
+        document.getElementById('changeSecBtn').addEventListener('click', function() {
+            const q = document.getElementById('profileSecurityQ').value;
+            const a = document.getElementById('profileSecurityA').value.trim();
+            const pass = document.getElementById('profileSecPass').value;
+            const errEl = document.getElementById('secErr');
+            const sucEl = document.getElementById('secSuccess');
+
+            errEl.classList.remove('show');
+            errEl.textContent = '';
+            sucEl.classList.remove('show');
+            sucEl.textContent = '';
+
+            const auth = getStoredAuth();
+            if (!auth) { errEl.textContent = 'No account found. Please re-login.'; errEl.classList.add('show'); return; }
+            if (!pass) { errEl.textContent = 'Please enter your current password to confirm.'; errEl.classList.add('show'); return; }
+            if (hash(pass) !== auth.hash) { errEl.textContent = 'Password is incorrect.'; errEl.classList.add('show'); return; }
+            if (!q) { errEl.textContent = 'Please select a security question.'; errEl.classList.add('show'); return; }
+            if (!a || a.length < 2) { errEl.textContent = 'Please enter a security answer (at least 2 characters).'; errEl.classList.add('show'); return; }
+
+            // Save auth with new security question, preserving existing password
+            setStoredAuth(auth.username, auth.hash, q, hash(a.toLowerCase()));
+
+            // Reset fields
+            document.getElementById('profileSecPass').value = '';
+            document.getElementById('profileSecurityA').value = '';
+            document.getElementById('profileSecurityQ').value = '';
+
+            // Show success
+            document.getElementById('profileCurrentQ').textContent = q;
+            sucEl.textContent = 'Security question updated successfully!';
+            sucEl.classList.add('show');
+            toast('Security question updated');
+        });
+
+        // Enter key support in security question fields
+        document.getElementById('profileSecurityA').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('changeSecBtn').click(); } });
+        document.getElementById('profileSecPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('changeSecBtn').click(); } });
 
         // ============================================================
         // DARK MODE
