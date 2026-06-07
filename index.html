@@ -486,6 +486,18 @@
                     <div class="fld"><label>Username <span class="req">*</span></label><input type="text" id="regUser" placeholder="admin" autocomplete="off"></div>
                     <div class="fld"><label>Password <span class="req">*</span></label><input type="password" id="regPass" placeholder="At least 6 characters" autocomplete="new-password"></div>
                     <div class="fld"><label>Confirm Password <span class="req">*</span></label><input type="password" id="regConfirm" placeholder="Repeat password" autocomplete="new-password"></div>
+                    <div class="fld fg-w"><label>Security Question <span class="req">*</span></label>
+                        <select id="regSecurityQ" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:0.9rem;font-family:var(--font);background:var(--surface);color:var(--text);transition:border-color 0.2s,box-shadow 0.2s;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239099a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;">
+                            <option value="">Select a question...</option>
+                            <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+                            <option value="What was the name of your elementary school?">What was the name of your elementary school?</option>
+                            <option value="What city were you born in?">What city were you born in?</option>
+                            <option value="What is your favorite movie?">What is your favorite movie?</option>
+                            <option value="What was your first car?">What was your first car?</option>
+                            <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+                        </select>
+                    </div>
+                    <div class="fld fg-w"><label>Security Answer <span class="req">*</span></label><input type="text" id="regSecurityA" placeholder="Enter your answer (case-insensitive)" autocomplete="off"></div>
                 </div>
                 <button class="btn btn-primary" id="createBtn">Create Account</button>
                 <div class="err-msg" id="regErr"></div>
@@ -496,6 +508,9 @@
                 <div class="fg">
                     <div class="fld"><label>Username</label><input type="text" id="loginUser" placeholder="Enter your username" autocomplete="off"></div>
                     <div class="fld"><label>Password</label><input type="password" id="loginPass" placeholder="Enter your password" autocomplete="current-password"></div>
+                </div>
+                <div style="text-align:right;margin-top:-4px;margin-bottom:4px;">
+                    <a id="forgotPassLink" style="font-size:0.78rem;color:var(--accent);cursor:pointer;text-decoration:none;font-weight:500;display:none;">Forgot Password?</a>
                 </div>
                 <button class="btn btn-primary" id="loginBtn">Sign In</button>
                 <div class="err-msg" id="loginErr"></div>
@@ -623,6 +638,51 @@
             <div class="modal-ftr">
                 <button class="btn btn-secondary" id="delCancel">Cancel</button>
                 <button class="btn btn-danger" id="delConfirm">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RESET PASSWORD OVERLAY ===== -->
+    <div class="overlay" id="resetOverlay">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-hdr">
+                <h2 id="resetTitle">Reset Password</h2>
+                <button class="modal-close" id="resetClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Security Question -->
+                <div id="resetStep1">
+                    <div class="info-box" id="resetInfoBox">
+                        Answer your security question below to verify your identity and reset your password.
+                    </div>
+                    <div class="fg" style="grid-template-columns:1fr;">
+                        <div class="fld">
+                            <label>Security Question</label>
+                            <p id="resetQuestionText" style="font-weight:600;padding:10px 0;color:var(--text);font-size:0.95rem;line-height:1.5;"></p>
+                        </div>
+                        <div class="fld">
+                            <label>Your Answer <span class="req">*</span></label>
+                            <input type="text" id="resetAnswer" placeholder="Enter the answer you provided during registration" autocomplete="off">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="resetVerifyBtn">Verify Answer</button>
+                    <div class="err-msg" id="resetVerifyErr"></div>
+                    <div class="success-msg" id="resetVerifySuccess"></div>
+                </div>
+
+                <!-- Step 2: New Password -->
+                <div id="resetStep2" style="display:none;">
+                    <div class="info-box" style="background:var(--success) !important;color:#fff !important;">
+                        <strong style="color:#fff;">&#10003; Identity verified!</strong> Now set your new password.
+                    </div>
+                    <div class="fg" style="grid-template-columns:1fr;">
+                        <div class="fld"><label>New Password <span class="req">*</span></label><input type="password" id="resetNewPass" placeholder="At least 6 characters" autocomplete="new-password"></div>
+                        <div class="fld"><label>Confirm New Password <span class="req">*</span></label><input type="password" id="resetNewPassConfirm" placeholder="Repeat new password" autocomplete="new-password"></div>
+                    </div>
+                    <button class="btn btn-primary" id="resetSaveBtn">Reset Password</button>
+                    <div class="err-msg" id="resetSaveErr"></div>
+                    <div class="success-msg" id="resetSaveSuccess"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -963,8 +1023,18 @@
             }
         }
 
-        function setStoredAuth(username, passwordHash) {
-            localStorage.setItem(AUTH_KEY, JSON.stringify({ username, hash: passwordHash }));
+        function hasSecurityQuestion(auth) {
+            return auth && typeof auth.security_question === 'string' && auth.security_question.length > 0
+                && typeof auth.security_answer === 'string' && auth.security_answer.length > 0;
+        }
+
+        function setStoredAuth(username, passwordHash, securityQuestion, securityAnswerHash) {
+            const data = { username, hash: passwordHash };
+            if (securityQuestion && securityAnswerHash) {
+                data.security_question = securityQuestion;
+                data.security_answer = securityAnswerHash;
+            }
+            localStorage.setItem(AUTH_KEY, JSON.stringify(data));
         }
 
         function isLoggedIn() {
@@ -981,18 +1051,24 @@
 
         function doLogout() {
             localStorage.removeItem(SESSION_KEY);
+            // Close any open overlays
+            document.getElementById('resetOverlay').classList.remove('active');
+            document.getElementById('profileOverlay').classList.remove('active');
             document.getElementById('loginOverlay').classList.add('active');
             document.getElementById('logoutBtn').classList.remove('show');
             document.getElementById('appContent').style.display = 'none';
             document.getElementById('loginUser').value = '';
             document.getElementById('loginPass').value = '';
             document.getElementById('loginErr').classList.remove('show');
-            document.getElementById('loginCard').querySelector('.sub').textContent = 'Admin Database Access';
+            document.getElementById('loginCard').querySelector('.sub').textContent = 'Sign in to access your database';
             // Show login form only — account already exists, no new registrations
             document.getElementById('createForm').style.display = 'none';
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('toggleLinkCreate').style.display = 'none';
             document.getElementById('toggleLinkLogin').style.display = 'none';
+            // Show forgot password link if security question is set
+            const auth = getStoredAuth();
+            document.getElementById('forgotPassLink').style.display = auth && hasSecurityQuestion(auth) ? 'inline' : 'none';
         }
 
         function showAuth() {
@@ -1004,6 +1080,7 @@
                 document.getElementById('toggleLinkCreate').style.display = 'none';
                 document.getElementById('toggleLinkLogin').style.display = 'block';
                 document.getElementById('loginCard').querySelector('.sub').textContent = 'Create Your Admin Account';
+                document.getElementById('forgotPassLink').style.display = 'none';
             } else {
                 // Account exists — show login form only, no registration allowed
                 document.getElementById('createForm').style.display = 'none';
@@ -1011,6 +1088,8 @@
                 document.getElementById('toggleLinkCreate').style.display = 'none';
                 document.getElementById('toggleLinkLogin').style.display = 'none';
                 document.getElementById('loginCard').querySelector('.sub').textContent = 'Sign in to access your database';
+                // Show forgot password link only if security question is set up
+                document.getElementById('forgotPassLink').style.display = auth && hasSecurityQuestion(auth) ? 'inline' : 'none';
             }
         }
 
@@ -1031,8 +1110,14 @@
             if (!pass || pass.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.add('show'); return; }
             if (pass !== confirm) { errEl.textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
 
+            const secQ = document.getElementById('regSecurityQ').value;
+            const secA = document.getElementById('regSecurityA').value.trim();
+
+            if (!secQ) { errEl.textContent = 'Please select a security question.'; errEl.classList.add('show'); return; }
+            if (!secA || secA.length < 2) { errEl.textContent = 'Please enter a security answer (at least 2 characters).'; errEl.classList.add('show'); return; }
+
             errEl.classList.remove('show');
-            setStoredAuth(user, hash(pass));
+            setStoredAuth(user, hash(pass), secQ, hash(secA.toLowerCase()));
             doLogin();
             toast('Account created. Welcome, ' + user + '!');
         });
@@ -1086,9 +1171,159 @@
         });
 
         // Enter key in login/register forms
-        document.getElementById('regConfirm').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('createBtn').click(); } });
+        document.getElementById('regSecurityA').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('createBtn').click(); } });
+        document.getElementById('regSecurityQ').addEventListener('keydown', function(e) { if (e.key === 'Enter' && this.value) { e.preventDefault(); document.getElementById('regSecurityA').focus(); } });
+        document.getElementById('regConfirm').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('regSecurityQ').focus(); } });
         document.getElementById('loginPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('loginBtn').click(); } });
         document.getElementById('regPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('regConfirm').focus(); } });
+
+        // ============================================================
+        // FORGOT PASSWORD — Reset via Security Question
+        // ============================================================
+
+        function resetResetOverlay() {
+            document.getElementById('resetStep1').style.display = 'block';
+            document.getElementById('resetStep2').style.display = 'none';
+            document.getElementById('resetAnswer').value = '';
+            document.getElementById('resetNewPass').value = '';
+            document.getElementById('resetNewPassConfirm').value = '';
+            document.getElementById('resetVerifyErr').classList.remove('show');
+            document.getElementById('resetVerifyErr').textContent = '';
+            document.getElementById('resetVerifySuccess').classList.remove('show');
+            document.getElementById('resetVerifySuccess').textContent = '';
+            document.getElementById('resetSaveErr').classList.remove('show');
+            document.getElementById('resetSaveErr').textContent = '';
+            document.getElementById('resetSaveSuccess').classList.remove('show');
+            document.getElementById('resetSaveSuccess').textContent = '';
+            document.getElementById('resetInfoBox').style.background = '';
+            document.getElementById('resetInfoBox').style.color = '';
+            document.getElementById('resetInfoBox').innerHTML = 'Answer your security question below to verify your identity and reset your password.';
+            document.getElementById('resetTitle').textContent = 'Reset Password';
+        }
+
+        // Open the reset overlay
+        document.getElementById('forgotPassLink').addEventListener('click', function() {
+            const auth = getStoredAuth();
+            if (!auth) { toast('No account found.', 'error'); return; }
+
+            if (!hasSecurityQuestion(auth)) {
+                toast('No security question set for this account. Password reset is not available.', 'error');
+                return;
+            }
+
+            resetResetOverlay();
+            document.getElementById('resetQuestionText').textContent = auth.security_question;
+            document.getElementById('resetOverlay').classList.add('active');
+            setTimeout(() => document.getElementById('resetAnswer').focus(), 150);
+        });
+
+        // Close reset overlay
+        document.getElementById('resetClose').addEventListener('click', function() {
+            document.getElementById('resetOverlay').classList.remove('active');
+        });
+        document.getElementById('resetOverlay').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('active');
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('resetOverlay').classList.contains('active')) {
+                document.getElementById('resetOverlay').classList.remove('active');
+            }
+        });
+
+        // Step 1: Verify security answer
+        document.getElementById('resetVerifyBtn').addEventListener('click', function() {
+            const auth = getStoredAuth();
+            if (!auth) {
+                toast('Account data lost. Please refresh.', 'error');
+                return;
+            }
+            const answer = document.getElementById('resetAnswer').value.trim();
+            const errEl = document.getElementById('resetVerifyErr');
+            const sucEl = document.getElementById('resetVerifySuccess');
+            errEl.classList.remove('show');
+            errEl.textContent = '';
+            sucEl.classList.remove('show');
+            sucEl.textContent = '';
+
+            if (!answer) {
+                errEl.textContent = 'Please enter your security answer.';
+                errEl.classList.add('show');
+                document.getElementById('resetAnswer').focus();
+                return;
+            }
+
+            if (hash(answer.toLowerCase()) !== auth.security_answer) {
+                errEl.textContent = 'Incorrect answer. Please try again.';
+                errEl.classList.add('show');
+                document.getElementById('resetAnswer').value = '';
+                document.getElementById('resetAnswer').focus();
+                return;
+            }
+
+            // Correct! Show step 2
+            sucEl.textContent = '&#10003; Answer correct!';
+            sucEl.classList.add('show');
+            document.getElementById('resetInfoBox').innerHTML = '<strong style="color:#fff;">&#10003; Identity verified!</strong> Now set your new password.';
+            document.getElementById('resetInfoBox').style.background = 'var(--success)';
+            document.getElementById('resetInfoBox').style.color = '#fff';
+            document.getElementById('resetTitle').textContent = 'Set New Password';
+
+            setTimeout(() => {
+                document.getElementById('resetStep1').style.display = 'none';
+                document.getElementById('resetStep2').style.display = 'block';
+                setTimeout(() => document.getElementById('resetNewPass').focus(), 100);
+            }, 600);
+        });
+
+        // Step 2: Save new password
+        document.getElementById('resetSaveBtn').addEventListener('click', function() {
+            const auth = getStoredAuth();
+            if (!auth) { toast('Account data lost. Please refresh.', 'error'); return; }
+
+            const newP = document.getElementById('resetNewPass').value;
+            const confirm = document.getElementById('resetNewPassConfirm').value;
+            const errEl = document.getElementById('resetSaveErr');
+            const sucEl = document.getElementById('resetSaveSuccess');
+            errEl.classList.remove('show');
+            errEl.textContent = '';
+            sucEl.classList.remove('show');
+            sucEl.textContent = '';
+
+            if (!newP || newP.length < 6) {
+                errEl.textContent = 'New password must be at least 6 characters.';
+                errEl.classList.add('show');
+                document.getElementById('resetNewPass').focus();
+                return;
+            }
+            if (newP !== confirm) {
+                errEl.textContent = 'Passwords do not match.';
+                errEl.classList.add('show');
+                document.getElementById('resetNewPassConfirm').focus();
+                return;
+            }
+
+            // Preserve the security question data when updating password
+            setStoredAuth(auth.username, hash(newP), auth.security_question, auth.security_answer);
+
+            document.getElementById('resetNewPass').value = '';
+            document.getElementById('resetNewPassConfirm').value = '';
+            sucEl.textContent = 'Password reset successfully! You can now sign in with your new password.';
+            sucEl.classList.add('show');
+            toast('Password reset successfully!');
+
+            // Auto-close after a moment
+            setTimeout(() => {
+                document.getElementById('resetOverlay').classList.remove('active');
+                // Focus the login password field
+                document.getElementById('loginPass').value = '';
+                document.getElementById('loginPass').focus();
+            }, 1800);
+        });
+
+        // Enter key in reset fields
+        document.getElementById('resetAnswer').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('resetVerifyBtn').click(); } });
+        document.getElementById('resetNewPassConfirm').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('resetSaveBtn').click(); } });
+        document.getElementById('resetNewPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('resetNewPassConfirm').focus(); } });
 
         // ============================================================
         // ADMIN PROFILE — Logo Upload & Password Change
